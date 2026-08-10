@@ -4,9 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard Kế hoạch triển khai 2026</title>
-<meta name="dashboard-version" content="self-register-shared-password-v1">
+<meta name="dashboard-version" content="firebase-realtime-shared-login-v1">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{
   --tp-purple:#5b2a86;--tp-purple-2:#71349b;--tp-purple-3:#8c58b4;--tp-dark:#32134f;
@@ -65,7 +64,7 @@ dialog{border:0;border-radius:16px;padding:0;box-shadow:0 22px 70px rgba(55,20,7
       <div class="auth-field"><label>User</label><input type="text" id="authUsername" autocomplete="username" required placeholder="Nhập User của bạn, VD: dungnp3"></div>
       <div class="auth-field"><label>Mật khẩu</label><input type="password" id="authPassword" autocomplete="current-password" minlength="8" required placeholder="Nhập mật khẩu chung"></div>
       <button class="auth-submit" id="authSubmit" type="submit">Đăng nhập</button>
-      <div class="auth-msg" id="authMsg">Nhập User của bạn và mật khẩu chung. User mới sẽ được tự tạo ở lần đăng nhập đầu tiên.</div>
+      <div class="auth-msg" id="authMsg">Nhập User của bạn và mật khẩu chung. User được ghi nhận tự động ở lần đăng nhập đầu tiên.</div>
     </form>
   </div>
 </div>
@@ -81,7 +80,7 @@ dialog{border:0;border-radius:16px;padding:0;box-shadow:0 22px 70px rgba(55,20,7
     </div>
   </header>
 
-  <div class="syncbar"><span class="syncdot on" id="syncDot"></span><strong id="syncTitle">Dữ liệu dùng chung Supabase</strong><span class="desc" id="syncDesc"><span class="online-pill">Online</span> · tự đồng bộ giữa các thành viên</span><span class="grow"></span><span class="saved" id="lastSaved"></span></div>
+  <div class="syncbar"><span class="syncdot on" id="syncDot"></span><strong id="syncTitle">Dữ liệu dùng chung Firebase</strong><span class="desc" id="syncDesc"><span class="online-pill">Realtime</span> · tự cập nhật giữa các thành viên</span><span class="grow"></span><span class="saved" id="lastSaved"></span></div>
 
   <section class="kpis">
     <div class="kpi total"><div class="label">Tổng hạng mục</div><div class="num" id="kTotal">0</div><div class="meta" id="kVisible">0 hiển thị</div></div>
@@ -145,19 +144,35 @@ dialog{border:0;border-radius:16px;padding:0;box-shadow:0 22px 70px rgba(55,20,7
 
 <dialog id="importDialog"><div class="modal-head"><h3>Xác nhận nhập Excel</h3><button class="close-btn" type="button" data-close="importDialog">×</button></div><div class="modal-body"><div id="importInfo"></div><div class="import-summary"><div class="import-stat"><b id="imTasks">0</b><span>Hạng mục lớn</span></div><div class="import-stat"><b id="imChecks">0</b><span>Nội dung con</span></div><div class="import-stat"><b id="imGroups">0</b><span>Nhóm công việc</span></div><div class="import-stat"><b id="imNoDate">0</b><span>Hạng mục chưa có hạn</span></div></div><div class="note-box">Khi Excel có cột tiến độ/tỷ lệ hoàn thành, Dashboard sẽ lấy giá trị đó. Nếu không có, trạng thái “Hoàn thành” được quy đổi 100%; các dòng khác mặc định 0%.</div></div><div class="modal-foot"><button class="btn" id="mergeImport" type="button">Gộp thêm</button><button class="btn primary" id="replaceImport" type="button">Thay thế dữ liệu hiện tại</button></div></dialog>
 
-<dialog id="syncDialog"><div class="modal-head"><h3>Dữ liệu dùng chung cho team</h3><button class="close-btn" type="button" data-close="syncDialog">×</button></div><div class="modal-body"><div class="note-box" style="margin-bottom:10px">File HTML tự thân chỉ lưu trên từng trình duyệt. Để một người cập nhật và cả team nhìn thấy, cần kết nối API/Database nội bộ. Dashboard đã hỗ trợ GET để kéo dữ liệu và PUT để lưu toàn bộ dữ liệu.</div><div class="field"><label>REST API endpoint</label><input id="apiUrl" placeholder="https://.../project-data"></div><div class="field" style="margin-top:9px"><label>Bearer token (nếu cần)</label><input id="apiToken" type="password" placeholder="Không bắt buộc"></div><label style="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:11px"><input id="autoSync" type="checkbox" style="accent-color:var(--tp-purple)"> Tự đồng bộ 30 giây/lần và tự đẩy sau khi cập nhật</label><div class="warn-box" style="margin-top:10px">API cần cho phép CORS từ trình duyệt. GET trả về mảng hạng mục hoặc {tasks:[...]}; PUT nhận {project,tasks,audit,updatedAt}.</div></div><div class="modal-foot"><button class="btn" id="pullBtn" type="button">Kéo dữ liệu</button><button class="btn" id="pushBtn" type="button">Đẩy dữ liệu</button><button class="btn primary" id="saveSync" type="button">Lưu thiết lập</button></div></dialog>
+<dialog id="syncDialog"><div class="modal-head"><h3>Dữ liệu dùng chung Firebase</h3><button class="close-btn" type="button" data-close="syncDialog">×</button></div><div class="modal-body"><div class="note-box">Dashboard đang đồng bộ realtime qua Cloud Firestore. Không cần cấu hình API thủ công trên từng máy.</div></div><div class="modal-foot"><button class="btn primary" data-close="syncDialog" type="button">Đóng</button></div></dialog>
 
 <dialog id="backupDialog"><div class="modal-head"><h3>Sao lưu / Phục hồi</h3><button class="close-btn" type="button" data-close="backupDialog">×</button></div><div class="modal-body"><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn" id="exportJson" type="button">Xuất JSON</button><button class="btn" id="exportCsv" type="button">Xuất CSV</button><label class="btn">Nhập JSON<input id="importJson" type="file" accept=".json" style="display:none"></label><button class="btn danger" id="resetData" type="button">Khôi phục dữ liệu gốc</button></div></div></dialog>
 
-<dialog id="membersDialog"><div class="modal-head"><h3>Quản lý tài khoản truy cập</h3><button class="close-btn" type="button" data-close="membersDialog">×</button></div><div class="modal-body"><div class="note-box">User được tự tạo ở lần đăng nhập đầu tiên bằng mật khẩu chung. Quản trị viên dùng màn hình này để đổi quyền, khóa/mở hoặc xóa User đã phát sinh.</div><div class="members-list" id="membersList"></div></div></dialog>
+<dialog id="membersDialog"><div class="modal-head"><h3>Thành viên</h3><button class="close-btn" type="button" data-close="membersDialog">×</button></div><div class="modal-body"><div class="note-box">Danh sách User được ghi nhận tự động khi đăng nhập. Toàn bộ thành viên sử dụng cùng mật khẩu truy cập.</div><div class="members-list" id="membersList"></div></div></dialog>
 
 <div class="toast" id="toast"></div>
 
-<script>
-const SUPABASE_URL="https://itpkaskcatpkarjeizpi.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY="sb_publishable_s0RsgB1y-DChmHwvPdIPbA_Ji2PbHw4";
-const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-let authUser=null,currentMember=null,remoteRefreshTimer=null,remoteWriteBusy=false;
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+import { getAuth, setPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+
+const firebaseConfig={
+  apiKey:"AIzaSyDOhop0ZffS1sntFAL8n50uwjymi8phJ2M",
+  authDomain:"ke-hoach-trien-khai-2026.firebaseapp.com",
+  projectId:"ke-hoach-trien-khai-2026",
+  storageBucket:"ke-hoach-trien-khai-2026.firebasestorage.app",
+  messagingSenderId:"877024332902",
+  appId:"1:877024332902:web:0b6ebc8ef76cda502cf1a7"
+};
+const firebaseApp=initializeApp(firebaseConfig);
+const auth=getAuth(firebaseApp);
+const db=getFirestore(firebaseApp);
+await setPersistence(auth,browserLocalPersistence);
+const SHARED_AUTH_EMAIL="dashboard2026@kehoach.local";
+const DASHBOARD_DOC_ID="ke-hoach-2026";
+const dashboardRef=doc(db,"dashboards",DASHBOARD_DOC_ID);
+let authUser=null,currentMember=null,unsubscribeDashboard=null,remoteWriteBusy=false;
 const STORAGE_KEY="kh2026_v4_tpbank";
 const LEGACY_KEYS=["kh2026_v3","kh2026_dashboard_v2"];
 const USER_KEY="kh2026_user";
@@ -286,7 +301,7 @@ function scheduleRemotePush(){const c=getSyncConfig();if(!c.auto||!c.url)return;
 async function pullRemote(silent=false){const c=getSyncConfig();if(!c.url){if(!silent)toast("Chưa cấu hình API dùng chung.");return}try{const r=await fetch(c.url,{method:"GET",headers:headersFor(c),cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);const x=await r.json(),tasks=Array.isArray(x)?x:x.tasks;if(!Array.isArray(tasks))throw new Error("API không trả về mảng tasks");state.tasks=tasks.map(normalizeTask);if(x.audit)state.audit=x.audit;state.updatedAt=x.updatedAt||new Date().toISOString();localStorage.setItem(STORAGE_KEY,JSON.stringify(state));render();if(!silent)toast("Đã kéo dữ liệu dùng chung.")}catch(err){updateSyncUI(false,err.message);if(!silent)toast("Không kéo được dữ liệu: "+err.message)}}
 async function pushRemote(silent=false){const c=getSyncConfig();if(!c.url){if(!silent)toast("Chưa cấu hình API dùng chung.");return}try{const payload={project:"Kế hoạch triển khai 2026",tasks:state.tasks,audit:state.audit||[],updatedAt:state.updatedAt};const r=await fetch(c.url,{method:"PUT",headers:headersFor(c),body:JSON.stringify(payload)});if(!r.ok)throw new Error("HTTP "+r.status);updateSyncUI(true);if(!silent)toast("Đã đẩy dữ liệu dùng chung.")}catch(err){updateSyncUI(false,err.message);if(!silent)toast("Không đẩy được dữ liệu: "+err.message)}}
 function startSync(){if(syncInterval)clearInterval(syncInterval);const c=getSyncConfig();if(c.auto&&c.url)syncInterval=setInterval(()=>pullRemote(true),30000);updateSyncUI()}
-function updateSyncUI(ok=null,msg=""){const dot=document.getElementById("syncDot"),title=document.getElementById("syncTitle"),desc=document.getElementById("syncDesc");dot.className="syncdot";if(ok===false){dot.classList.add("warn");title.textContent="Lỗi đồng bộ Supabase";desc.textContent=msg||"Không kết nối được"}else{dot.classList.add("on");title.textContent="Dữ liệu dùng chung Supabase";desc.innerHTML='<span class="online-pill">Online</span> · tự đồng bộ giữa các thành viên'}document.getElementById("lastSaved").textContent=state.updatedAt?`Lưu gần nhất: ${formatDT(state.updatedAt)}`:""}
+function updateSyncUI(ok=null,msg=""){const dot=document.getElementById("syncDot"),title=document.getElementById("syncTitle"),desc=document.getElementById("syncDesc");dot.className="syncdot";if(ok===false){dot.classList.add("warn");title.textContent="Lỗi đồng bộ Firebase";desc.textContent=msg||"Không kết nối được"}else{dot.classList.add("on");title.textContent="Dữ liệu dùng chung Firebase";desc.innerHTML='<span class="online-pill">Realtime</span> · tự cập nhật giữa các thành viên'}document.getElementById("lastSaved").textContent=state.updatedAt?`Lưu gần nhất: ${formatDT(state.updatedAt)}`:""}
 
 function download(name,text,type="application/json"){const a=document.createElement("a"),u=URL.createObjectURL(new Blob([text],{type}));a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000)}
 function exportCSV(){const cols=["Nhóm","Nhóm con","STT","Hạng mục","Nội dung con","Từ ngày nội dung","Đến ngày nội dung","PIC nội dung","% nội dung","Timeline hạng mục","PIC hạng mục","Phối hợp","Đầu ra","Tiến độ hạng mục","Trạng thái","Người nhập","Cập nhật bởi","Cập nhật lúc"],rows=[];state.tasks.forEach(t=>t.checks.forEach(c=>rows.push([t.section,t.subsection,t.stt,t.title,c.text,c.startDate,c.endDate,c.owner,clampPct(c.pct),displayTimeline(t),t.owner,t.collaborators,t.output,pct(t),status(t),t.createdBy,t.updatedBy,t.updatedAt])));const csv="\ufeff"+[cols,...rows].map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\n");download("Ke_hoach_trien_khai_2026_chi_tiet.csv",csv,"text/csv;charset=utf-8")}
@@ -295,20 +310,120 @@ function touchTask(t,action){t.updatedBy=currentUser();t.updatedAt=new Date().to
 
 
 
-// ── SUPABASE AUTH + SHARED DATA ──
+// ── FIREBASE AUTH + REALTIME DATA ──
 function setAuthMsg(msg,type=""){const el=document.getElementById("authMsg");el.textContent=msg;el.className="auth-msg"+(type?" "+type:"")}
 function normalizeUsername(v){return String(v||"").trim().toLowerCase()}
-function internalEmail(username){return normalizeUsername(username)+"@tp-dashboard.local"}
-async function adminUserAction(action,payload={}){const {data:{session}}=await sb.auth.getSession();const headers={"Content-Type":"application/json","apikey":SUPABASE_PUBLISHABLE_KEY};if(session?.access_token)headers.Authorization="Bearer "+session.access_token;const r=await fetch(SUPABASE_URL+"/functions/v1/dashboard-user-admin",{method:"POST",headers,body:JSON.stringify({action,...payload})});const x=await r.json().catch(()=>({}));if(!r.ok||x.error)throw new Error(x.error||("HTTP "+r.status));return x}
-async function getAllowedMember(user){const {data,error}=await sb.from("dashboard_members").select("email,username,display_name,role,active,auth_user_id").eq("auth_user_id",user.id).maybeSingle();if(error)throw error;return data}
-async function afterLogin(user){authUser=user;try{const member=await getAllowedMember(user);if(!member||!member.active){setAuthMsg("Tài khoản chưa được cấp quyền hoặc đã bị khóa.","err");await sb.auth.signOut();authUser=null;currentMember=null;document.getElementById("authGate").classList.remove("hidden");return}currentMember=member;document.getElementById("accountName").textContent=member.display_name||member.username;document.getElementById("accountEmail").textContent=member.username+" · "+(member.role==="admin"?"Quản trị":member.role==="viewer"?"Chỉ xem":"Cập nhật");document.getElementById("membersBtn").style.display=member.role==="admin"?"inline-flex":"none";document.getElementById("authGate").classList.add("hidden");await loadFromSupabase(true);if(remoteRefreshTimer)clearInterval(remoteRefreshTimer);remoteRefreshTimer=setInterval(()=>loadFromSupabase(false,true),20000)}catch(err){console.error(err);setAuthMsg("Không kiểm tra được quyền truy cập: "+err.message,"err")}}
-async function loadFromSupabase(showToast=false,silent=false){if(!authUser)return;try{const [{data:tasks,error:te},{data:items,error:ie}]=await Promise.all([sb.from("dashboard_tasks").select("*").order("sort_order").order("created_at"),sb.from("dashboard_items").select("*").order("sort_order").order("created_at")]);if(te)throw te;if(ie)throw ie;if(!tasks.length){if(currentMember?.role==="admin"&&state.tasks?.length){await syncFullState(true);if(showToast)toast("Đã khởi tạo dữ liệu dùng chung từ kế hoạch hiện tại.");return}else{if(showToast)toast("Nguồn dùng chung chưa có dữ liệu.");return}}const byTask=new Map();(items||[]).forEach(i=>{if(!byTask.has(i.task_id))byTask.set(i.task_id,[]);byTask.get(i.task_id).push({id:i.id,text:i.text,pct:i.progress,startDate:i.start_date,endDate:i.end_date,owner:i.owner||"",note:""})});state.tasks=tasks.map(t=>normalizeTask({id:t.id,stt:t.stt||"",section:t.section,subsection:t.subsection,title:t.title,detail:t.detail,timelineOriginal:t.timeline_original,startDate:t.start_date,endDate:t.end_date,owner:t.owner,collaborators:t.collaborators,output:t.output,checks:byTask.get(t.id)||[],createdBy:t.created_by_email||"Dữ liệu chung",createdAt:t.created_at,updatedBy:t.updated_by_email||"",updatedAt:t.updated_at}));state.updatedAt=new Date().toISOString();localStorage.setItem(STORAGE_KEY,JSON.stringify(state));render();updateSyncUI(true);if(showToast)toast("Đã tải dữ liệu dùng chung.")}catch(err){console.error(err);updateSyncUI(false,err.message);if(!silent)toast("Không tải được dữ liệu chung: "+err.message)}}
-function taskRow(t,idx=0){return{id:t.id,stt:t.stt||null,section:t.section||"",subsection:t.subsection||"",title:t.title,detail:t.detail||"",timeline_original:t.timelineOriginal||"",start_date:t.startDate||null,end_date:t.endDate||null,owner:t.owner||"",collaborators:t.collaborators||"",output:t.output||"",sort_order:idx,created_by_email:t.createdBy||currentUser(),updated_by:authUser.id,updated_by_email:currentUser(),updated_at:new Date().toISOString()}}
-function itemRows(t){return(t.checks||[]).map((c,i)=>({id:c.id||(c.id=`${t.id}-i${i+1}-${Math.random().toString(36).slice(2,5)}`),task_id:t.id,text:c.text,progress:clampPct(c.pct),start_date:c.startDate||null,end_date:c.endDate||null,owner:c.owner||"",sort_order:i,created_by_email:t.createdBy||currentUser(),updated_by:authUser.id,updated_by_email:currentUser(),updated_at:new Date().toISOString()}))}
-async function saveRemoteTask(t,action="Cập nhật"){if(!authUser||currentMember?.role==="viewer")return;try{remoteWriteBusy=true;const idx=state.tasks.findIndex(x=>x.id===t.id);let {error}=await sb.from("dashboard_tasks").upsert(taskRow(t,idx));if(error)throw error;error=(await sb.from("dashboard_items").delete().eq("task_id",t.id)).error;if(error)throw error;const rows=itemRows(t);if(rows.length){error=(await sb.from("dashboard_items").insert(rows)).error;if(error)throw error}await sb.from("dashboard_audit").insert({entity_type:"task",entity_id:t.id,action,actor_id:authUser.id,actor_email:currentUser(),details:{title:t.title}});updateSyncUI(true)}catch(err){console.error(err);updateSyncUI(false,err.message);toast("Lỗi lưu dữ liệu chung: "+err.message)}finally{remoteWriteBusy=false}}
-async function deleteRemoteTask(t,action="Xóa hạng mục"){if(!authUser||currentMember?.role==="viewer")return;try{const {error}=await sb.from("dashboard_tasks").delete().eq("id",t.id);if(error)throw error;await sb.from("dashboard_audit").insert({entity_type:"task",entity_id:t.id,action,actor_id:authUser.id,actor_email:currentUser(),details:{title:t.title}});updateSyncUI(true)}catch(err){console.error(err);toast("Không xóa được trên dữ liệu chung: "+err.message)}}
-async function syncFullState(replace=false){if(!authUser||currentMember?.role==="viewer")return;try{remoteWriteBusy=true;if(replace){let {error}=await sb.from("dashboard_tasks").delete().neq("id","");if(error)throw error}const taskRows=state.tasks.map((t,i)=>taskRow(t,i));let {error}=await sb.from("dashboard_tasks").upsert(taskRows);if(error)throw error;for(const t of state.tasks){error=(await sb.from("dashboard_items").delete().eq("task_id",t.id)).error;if(error)throw error;const rows=itemRows(t);if(rows.length){error=(await sb.from("dashboard_items").insert(rows)).error;if(error)throw error}}await sb.from("dashboard_audit").insert({entity_type:"import",action:replace?"Thay thế dữ liệu":"Gộp dữ liệu",actor_id:authUser.id,actor_email:currentUser(),details:{tasks:state.tasks.length}});toast("Đã cập nhật dữ liệu dùng chung.");updateSyncUI(true)}catch(err){console.error(err);toast("Không đồng bộ được dữ liệu: "+err.message)}finally{remoteWriteBusy=false}}
-async function renderMembers(){if(currentMember?.role!=="admin")return;const {data,error}=await sb.from("dashboard_members").select("username,display_name,role,active,auth_user_id").order("username");if(error){toast(error.message);return}document.getElementById("membersList").innerHTML=(data||[]).map(m=>`<div class="member-row"><div><b>${esc(m.username||"—")}</b><div class="member-sub">${esc(m.display_name||"")}${m.auth_user_id?"":" · Chưa khởi tạo"}</div></div><select data-member-role="${esc(m.username)}"><option value="editor" ${m.role==="editor"?"selected":""}>Cập nhật</option><option value="viewer" ${m.role==="viewer"?"selected":""}>Chỉ xem</option><option value="admin" ${m.role==="admin"?"selected":""}>Quản trị</option></select><label style="font-size:10px"><input type="checkbox" data-member-active="${esc(m.username)}" ${m.active?"checked":""}> Hoạt động</label><button class="btn sm danger" data-member-delete="${esc(m.username)}" ${m.username===currentMember?.username?"disabled":""}>Xóa</button></div>`).join("")}
+function validUsername(v){return /^[a-z0-9._-]{3,40}$/.test(v)}
+function cleanForFirestore(x){return JSON.parse(JSON.stringify(x))}
+function taskWithVersion(t,version){const x=cleanForFirestore(t);x._version=Number(version||1);return x}
+function applyRemoteState(data){
+  const tasks=Array.isArray(data?.tasks)?data.tasks.map(normalizeTask):[];
+  state={tasks,audit:Array.isArray(data?.audit)?data.audit:[],updatedAt:data?.updatedAt||new Date().toISOString()};
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+  render();updateSyncUI(true);
+}
+async function registerUsername(username){
+  const ref=doc(db,"dashboard_users",username),snap=await getDoc(ref),now=serverTimestamp();
+  if(!snap.exists())await setDoc(ref,{username,display_name:username,first_seen_at:now,last_login_at:now});
+  else await setDoc(ref,{last_login_at:now},{merge:true});
+}
+async function ensureDashboardSeed(){
+  await runTransaction(db,async tx=>{
+    const snap=await tx.get(dashboardRef);
+    if(snap.exists())return;
+    const initial=freshState();
+    const tasks=initial.tasks.map(t=>taskWithVersion(t,1));
+    tx.set(dashboardRef,{project:"Kế hoạch triển khai 2026",schemaVersion:1,tasks,audit:[],updatedAt:new Date().toISOString()});
+  });
+}
+async function afterLogin(user,username){
+  authUser=user;currentMember={username,display_name:username,role:"editor",active:true};
+  localStorage.setItem(USER_KEY,username);
+  document.getElementById("accountName").textContent=username;
+  document.getElementById("accountEmail").textContent="Cập nhật · Firebase realtime";
+  document.getElementById("membersBtn").style.display="none";
+  document.getElementById("authGate").classList.add("hidden");
+  await registerUsername(username);
+  await ensureDashboardSeed();
+  startRealtime();
+}
+function startRealtime(){
+  if(unsubscribeDashboard)unsubscribeDashboard();
+  unsubscribeDashboard=onSnapshot(dashboardRef,snap=>{
+    if(!snap.exists())return;
+    applyRemoteState(snap.data());
+  },err=>{console.error(err);updateSyncUI(false,err.message);toast("Mất kết nối dữ liệu realtime: "+err.message)});
+}
+async function loadFromFirebase(showToast=false){
+  if(!authUser)return;
+  try{const snap=await getDoc(dashboardRef);if(snap.exists()){applyRemoteState(snap.data());if(showToast)toast("Đã tải dữ liệu mới nhất.")}}catch(err){console.error(err);updateSyncUI(false,err.message);if(showToast)toast("Không tải được dữ liệu: "+err.message)}
+}
+async function saveRemoteTask(t,action="Cập nhật"){
+  if(!authUser||!currentMember)return;
+  try{
+    remoteWriteBusy=true;
+    const newVersion=await runTransaction(db,async tx=>{
+      const snap=await tx.get(dashboardRef);
+      const data=snap.exists()?snap.data():{tasks:[],audit:[]};
+      const tasks=Array.isArray(data.tasks)?data.tasks.map(normalizeTask):[];
+      const idx=tasks.findIndex(x=>x.id===t.id);
+      const remoteVersion=idx>=0?Number(tasks[idx]._version||1):0;
+      const localVersion=Number(t._version||0);
+      if(idx>=0&&localVersion&&remoteVersion!==localVersion)throw new Error("CONFLICT");
+      const incoming=taskWithVersion(t,remoteVersion+1);
+      if(idx>=0)tasks[idx]=incoming;else tasks.push(incoming);
+      const now=new Date().toISOString();
+      const audit=[{at:now,user:currentUser(),action,taskId:t.id,title:t.title||""},...(Array.isArray(data.audit)?data.audit:[])].slice(0,300);
+      tx.set(dashboardRef,{...data,tasks,audit,updatedAt:now},{merge:false});
+      return incoming._version;
+    });
+    t._version=newVersion;updateSyncUI(true);
+  }catch(err){
+    console.error(err);
+    if(String(err?.message||err).includes("CONFLICT")){toast("Hạng mục vừa được người khác cập nhật. Đã tải lại bản mới nhất.");await loadFromFirebase(false)}
+    else{updateSyncUI(false,err.message);toast("Lỗi lưu Firebase: "+err.message)}
+  }finally{remoteWriteBusy=false}
+}
+async function deleteRemoteTask(t,action="Xóa hạng mục"){
+  if(!authUser||!currentMember)return;
+  try{
+    await runTransaction(db,async tx=>{
+      const snap=await tx.get(dashboardRef);if(!snap.exists())return;
+      const data=snap.data(),tasks=Array.isArray(data.tasks)?data.tasks.map(normalizeTask):[];
+      const idx=tasks.findIndex(x=>x.id===t.id);if(idx<0)return;
+      const remoteVersion=Number(tasks[idx]._version||1),localVersion=Number(t._version||0);
+      if(localVersion&&remoteVersion!==localVersion)throw new Error("CONFLICT");
+      tasks.splice(idx,1);
+      const now=new Date().toISOString();
+      const audit=[{at:now,user:currentUser(),action,taskId:t.id,title:t.title||""},...(Array.isArray(data.audit)?data.audit:[])].slice(0,300);
+      tx.set(dashboardRef,{...data,tasks,audit,updatedAt:now},{merge:false});
+    });updateSyncUI(true);
+  }catch(err){console.error(err);if(String(err?.message||err).includes("CONFLICT")){toast("Hạng mục đã được người khác sửa trước khi xóa. Đã tải lại.");await loadFromFirebase(false)}else toast("Không xóa được trên Firebase: "+err.message)}
+}
+async function syncFullState(replace=false){
+  if(!authUser||!currentMember)return;
+  try{
+    remoteWriteBusy=true;
+    await runTransaction(db,async tx=>{
+      const snap=await tx.get(dashboardRef),data=snap.exists()?snap.data():{tasks:[],audit:[]};
+      const remote=Array.isArray(data.tasks)?data.tasks.map(normalizeTask):[];
+      let tasks;
+      if(replace){tasks=state.tasks.map(t=>taskWithVersion(t,Number(t._version||0)+1||1))}
+      else{
+        const map=new Map(remote.map(t=>[t.id,t]));
+        for(const t of state.tasks){const old=map.get(t.id);map.set(t.id,taskWithVersion(t,old?Number(old._version||1)+1:1))}
+        tasks=[...map.values()];
+      }
+      const now=new Date().toISOString();
+      const action=replace?"Thay thế dữ liệu":"Gộp dữ liệu";
+      const audit=[{at:now,user:currentUser(),action,taskId:"",title:`${tasks.length} hạng mục`},...(Array.isArray(data.audit)?data.audit:[])].slice(0,300);
+      tx.set(dashboardRef,{...data,tasks,audit,updatedAt:now},{merge:false});
+    });toast("Đã cập nhật dữ liệu dùng chung Firebase.");updateSyncUI(true);
+  }catch(err){console.error(err);toast("Không đồng bộ được dữ liệu: "+err.message);updateSyncUI(false,err.message)}finally{remoteWriteBusy=false}
+}
+async function renderAccessUsers(){
+  document.getElementById("membersList").innerHTML='<div class="note-box">User được ghi nhận tự động. Với cơ chế mật khẩu chung, danh tính User là thông tin do người dùng tự khai báo.</div>';
+}
 
 // Events
 document.addEventListener("click",e=>{
@@ -334,14 +449,38 @@ document.addEventListener("change",e=>{
 document.querySelectorAll(".multi-trigger").forEach(btn=>btn.addEventListener("click",e=>{e.stopPropagation();const drop=btn.closest(".multi-wrap").querySelector(".multi-dropdown"),open=drop.classList.contains("open");document.querySelectorAll(".multi-dropdown.open").forEach(x=>x.classList.remove("open"));if(!open)drop.classList.add("open")}));
 document.getElementById("q").addEventListener("input",e=>{filters.q=e.target.value.trim();tablePage=1;renderKpis();renderTable()});document.getElementById("dateFrom").addEventListener("change",e=>{filters.from=e.target.value;tablePage=1;renderKpis();renderTable()});document.getElementById("dateTo").addEventListener("change",e=>{filters.to=e.target.value;tablePage=1;renderKpis();renderTable()});document.getElementById("dueWindow").addEventListener("change",renderUpcoming);document.getElementById("resetFilter").addEventListener("click",()=>{filters={q:"",from:"",to:"",creators:new Set(),owners:new Set(),statuses:new Set()};tablePage=1;document.getElementById("q").value="";document.getElementById("dateFrom").value="";document.getElementById("dateTo").value="";render()});
 document.getElementById("addBtn").addEventListener("click",()=>openTask());document.getElementById("taskForm").addEventListener("submit",saveTaskForm);document.getElementById("importExcel").addEventListener("change",e=>{const f=e.target.files?.[0];if(f)importExcelFile(f);e.target.value=""});document.getElementById("mergeImport").addEventListener("click",()=>applyImport("merge"));document.getElementById("replaceImport").addEventListener("click",()=>applyImport("replace"));
-document.getElementById("backupBtn").addEventListener("click",()=>document.getElementById("backupDialog").showModal());document.getElementById("exportJson").addEventListener("click",()=>download("KH_2026_backup.json",JSON.stringify(state,null,2)));document.getElementById("exportCsv").addEventListener("click",exportCSV);document.getElementById("importJson").addEventListener("change",async e=>{const f=e.target.files?.[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!Array.isArray(x.tasks))throw new Error("Không có mảng tasks");x.tasks=x.tasks.map(normalizeTask);state=x;localStorage.setItem(STORAGE_KEY,JSON.stringify(state));render();toast("Đã phục hồi dữ liệu.")}catch(err){toast("File JSON không hợp lệ.")}e.target.value=""});document.getElementById("resetData").addEventListener("click",()=>{if(confirm("Khôi phục dữ liệu gốc? Mọi thay đổi cục bộ hiện tại sẽ bị thay thế.")){state=freshState();localStorage.setItem(STORAGE_KEY,JSON.stringify(state));render();toast("Đã khôi phục dữ liệu gốc.")}});
+document.getElementById("backupBtn").addEventListener("click",()=>document.getElementById("backupDialog").showModal());document.getElementById("exportJson").addEventListener("click",()=>download("KH_2026_backup.json",JSON.stringify(state,null,2)));document.getElementById("exportCsv").addEventListener("click",exportCSV);document.getElementById("importJson").addEventListener("change",async e=>{const f=e.target.files?.[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!Array.isArray(x.tasks))throw new Error("Không có mảng tasks");x.tasks=x.tasks.map(normalizeTask);state=x;localStorage.setItem(STORAGE_KEY,JSON.stringify(state));render();await syncFullState(true);toast("Đã phục hồi và cập nhật dữ liệu dùng chung.")}catch(err){toast("File JSON không hợp lệ.")}e.target.value=""});document.getElementById("resetData").addEventListener("click",()=>{if(confirm("Khôi phục dữ liệu gốc? Mọi thay đổi cục bộ hiện tại sẽ bị thay thế.")){state=freshState();localStorage.setItem(STORAGE_KEY,JSON.stringify(state));render();syncFullState(true);toast("Đã khôi phục dữ liệu gốc.")}});
 
-document.getElementById("authForm").addEventListener("submit",async e=>{e.preventDefault();const username=normalizeUsername(document.getElementById("authUsername").value),password=document.getElementById("authPassword").value;if(!username)return;setAuthMsg("Đang đăng nhập...");try{const x=await adminUserAction("login_or_register",{username,password});const {data,error}=await sb.auth.setSession({access_token:x.session.access_token,refresh_token:x.session.refresh_token});if(error)throw error;if(!data.user)throw new Error("Không tạo được phiên đăng nhập.");await afterLogin(data.user)}catch(err){setAuthMsg(err.message||"User hoặc mật khẩu không đúng.","err")}});
-document.getElementById("logoutBtn").addEventListener("click",async()=>{await sb.auth.signOut();authUser=null;currentMember=null;if(remoteRefreshTimer)clearInterval(remoteRefreshTimer);document.getElementById("authGate").classList.remove("hidden");document.getElementById("authPassword").value="";setAuthMsg("Nhập User của bạn và mật khẩu chung. User mới sẽ được tự tạo ở lần đăng nhập đầu tiên.")});
-document.getElementById("membersBtn").addEventListener("click",async()=>{await renderMembers();document.getElementById("membersDialog").showModal()});
-document.getElementById("membersList").addEventListener("change",async e=>{try{if(e.target.dataset.memberRole){await adminUserAction("update",{username:e.target.dataset.memberRole,role:e.target.value});toast("Đã đổi quyền.")}if(e.target.dataset.memberActive){await adminUserAction("update",{username:e.target.dataset.memberActive,active:e.target.checked});toast("Đã cập nhật trạng thái.")}}catch(err){toast(err.message);await renderMembers()}});
-document.getElementById("membersList").addEventListener("click",async e=>{const b=e.target.closest("[data-member-delete]");if(!b||b.disabled)return;const username=b.dataset.memberDelete;if(confirm(`Xóa user “${username}”? User này sẽ không thể đăng nhập nữa.`)){try{await adminUserAction("delete",{username});await renderMembers();toast("Đã xóa user.")}catch(err){toast(err.message)}}});
-(async()=>{const {data:{session}}=await sb.auth.getSession();if(session?.user)await afterLogin(session.user);else document.getElementById("authGate").classList.remove("hidden")})();
+document.getElementById("authForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const username=normalizeUsername(document.getElementById("authUsername").value),password=document.getElementById("authPassword").value;
+  if(!validUsername(username)){setAuthMsg("User chỉ gồm chữ, số, dấu chấm, gạch dưới/gạch ngang; dài 3–40 ký tự.","err");return}
+  setAuthMsg("Đang đăng nhập...");localStorage.setItem(USER_KEY,username);
+  try{
+    let cred;
+    try{cred=await signInWithEmailAndPassword(auth,SHARED_AUTH_EMAIL,password)}
+    catch(firstErr){
+      try{cred=await createUserWithEmailAndPassword(auth,SHARED_AUTH_EMAIL,password)}
+      catch(createErr){throw firstErr}
+    }
+    await afterLogin(cred.user,username);
+  }catch(err){console.error(err);setAuthMsg("Mật khẩu không đúng hoặc Firebase Authentication chưa được bật.","err")}
+});
+document.getElementById("logoutBtn").addEventListener("click",async()=>{
+  if(unsubscribeDashboard){unsubscribeDashboard();unsubscribeDashboard=null}
+  await signOut(auth);authUser=null;currentMember=null;localStorage.removeItem(USER_KEY);
+  document.getElementById("authGate").classList.remove("hidden");document.getElementById("authPassword").value="";
+  setAuthMsg("Nhập User của bạn và mật khẩu chung.");
+});
+document.getElementById("membersBtn").addEventListener("click",async()=>{await renderAccessUsers();document.getElementById("membersDialog").showModal()});
+
+onAuthStateChanged(auth,async user=>{
+  if(!user){document.getElementById("authGate").classList.remove("hidden");return}
+  const username=normalizeUsername(localStorage.getItem(USER_KEY)||"");
+  if(username&&validUsername(username)&&(!authUser||!currentMember)){
+    try{await afterLogin(user,username)}catch(err){console.error(err);setAuthMsg("Không mở được Dashboard: "+err.message,"err")}
+  }
+});
 
 render();
 </script>
